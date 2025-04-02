@@ -14,6 +14,9 @@ PhysicsObject bouncingObject;
 float xSpeed = 0.2;
 vec3 computeInitialPosition(float objectSize);
 
+//drawing mode
+GLenum drawingMode = GL_FILL;
+
 
 typedef vec4  color4;
 typedef vec4  point4;
@@ -101,6 +104,7 @@ void init()
     glUseProgram(program);
 
     colorcube(); // create the cube in terms of 6 faces each of which is made of two triangles
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // Create a vertex array object
     GLuint vao;
@@ -172,33 +176,64 @@ void display(void)
     glFinish();
 }
 
-// Specify what to do when a keyboard event happens, i.e., when the user presses or releases a key
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+    // not to be triggered in key release situation 
+    if (action != GLFW_PRESS) return;
     switch (key) {
     case GLFW_KEY_ESCAPE: case GLFW_KEY_Q:
         exit(EXIT_SUCCESS);
         break;
-    case GLFW_KEY_I: 
-        // initialize the position.
+    case GLFW_KEY_I:
+    {
         float objectSize = 0.5f;
         vec3 pos = computeInitialPosition(objectSize);
         bouncingObject.position = pos;
         vec3 zerovec(0.0f);
         bouncingObject.velocity = zerovec;
-        
-        
         break;
+    }
+
     //case GLFW_KEY_C:
     //    // switch the color. 
     //    break;
-    //case GLFW_KEY_H:
-    //    // 
+    case GLFW_KEY_H:
+        // display the help commands  
+        std::cout << "i -- initialize the pose (top left corner of the window)\nc-- switch between two colors(of your choice), which is used to draw lines or triangles.\nh -- help; print explanation of your input control(simply to the command line)\nq -- quit(exit) the program" << std::endl;
+        break;
 
     }
     
 }
 
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (action == GLFW_PRESS) {
+        switch (button) {
+       
+        case GLFW_MOUSE_BUTTON_RIGHT: 
+        {
+            // switch object type
+            break;
+        }
+       
+        case GLFW_MOUSE_BUTTON_LEFT: 
+        {
+            // switch drawing type
+            drawingMode = (drawingMode == GL_LINE) ? GL_FILL : GL_LINE;
+            glPolygonMode(GL_FRONT_AND_BACK, drawingMode);
+            //std::cout << "Drawing mode: " << (drawingMode == GL_LINE ? "Wireframe" : "Solid") << std::endl;
+
+        }
+        }
+    }
+}
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
 
 //---------------------------------------------------------------------
 //
@@ -235,7 +270,9 @@ int main()
 
     //Specify which events to recognize and the callback functions to handle them
     glfwSetKeyCallback(window, key_callback);
-   
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
     init();
 
     double frameRate = 120, currentTime, previousTime = 0.0;
@@ -259,7 +296,7 @@ int main()
 
 
 
-
+// Simulate the movement again
 vec3 computeInitialPosition(float objectSize)
 {
 
@@ -279,3 +316,5 @@ vec3 computeInitialPosition(float objectSize)
     vec3 initialPosition = vec3(left + halfObjectSize, top - halfObjectSize, 0.0f);
     return initialPosition;
 }
+
+
