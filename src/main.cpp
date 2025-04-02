@@ -4,15 +4,18 @@
 #include "Angel.h"
 #include "PhysicsObject.h"
 
-//
-//  Display a rotating cube
-//
+// About the scene
+const int sceneWidth = 1200;
+const int sceneHeight = 600;
 
+
+// About the object 
 PhysicsObject bouncingObject;
 
 
 typedef vec4  color4;
 typedef vec4  point4;
+
 
 const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
 
@@ -121,9 +124,21 @@ void init()
 
     // Set projection matrix
     mat4  projection;
-    projection = Ortho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0); // Ortho(): user-defined function in mat.h
-    // Ortho() returns a 4x4 projection matrix, specifying the view volume (here you can change the view volume)
+    float aspect = (float)sceneWidth / (float)sceneHeight;
+    float viewHeight = 2.0f;
+    float viewWidth = viewHeight * aspect;
+    // we do ths not to have the aspect same as the scene
+    float top = viewHeight / 2.0f;     // = 1.0
+    float bottom = -top;               // = -1.0
+    float right = viewWidth / 2.0f;    // = aspect
+    float left = -right;               // = -aspect
+
+  
+    projection = Ortho(left, right, bottom, top, -1.0, 1.0); // Ortho(): user-defined function in mat.h
     glUniformMatrix4fv(Projection, 1, GL_TRUE, projection); // Send projection matrix to shader
+
+   
+
 
     glEnable(GL_DEPTH_TEST);
     glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -201,7 +216,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 
-    GLFWwindow* window = glfwCreateWindow(1024, 1024, "Spin Cube", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(sceneWidth, sceneHeight, "Spin Cube", NULL, NULL);
     glfwMakeContextCurrent(window);
 
 
