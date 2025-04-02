@@ -11,6 +11,8 @@ const int sceneHeight = 600;
 
 // About the object 
 PhysicsObject bouncingObject;
+float xSpeed = 0.1;
+vec3 initialPosition(- 1.0f, 1.0f, 0);
 
 
 typedef vec4  color4;
@@ -24,14 +26,14 @@ color4 colors[NumVertices];
 
 // Vertices of a unit cube centered at origin, sides aligned with axes
 point4 vertices[8] = {
-    point4(-0.5, -0.5,  0.5, 1.0),
-    point4(-0.5,  0.5,  0.5, 1.0),
-    point4(0.5,  0.5,  0.5, 1.0),
-    point4(0.5, -0.5,  0.5, 1.0),
-    point4(-0.5, -0.5, -0.5, 1.0),
-    point4(-0.5,  0.5, -0.5, 1.0),
-    point4(0.5,  0.5, -0.5, 1.0),
-    point4(0.5, -0.5, -0.5, 1.0)
+    point4(-0.25, -0.25,  0.25, 1.0),
+    point4(-0.25,  0.25,  0.25, 1.0),
+    point4(0.25,  0.25,  0.25, 1.0),
+    point4(0.25, -0.25,  0.25, 1.0),
+    point4(-0.25, -0.25, -0.25, 1.0),
+    point4(-0.25,  0.25, -0.25, 1.0),
+    point4(0.25,  0.25, -0.25, 1.0),
+    point4(0.25, -0.25, -0.25, 1.0)
 };
 
 // RGBA olors
@@ -90,6 +92,25 @@ void colorcube()
 
 void init()
 {
+    float cubeSize = 0.5f; // the full width/height of the cube (not radius)
+    float margin = 0.1f;   // you can tweak this
+
+    // View volume boundaries from your existing code:
+    float aspect = (float)sceneWidth / (float)sceneHeight;
+    float viewHeight = 2.0f;
+    float viewWidth = viewHeight * aspect;
+    float top = viewHeight / 2.0f;
+    float bottom = -top;
+    float right = viewWidth / 2.0f;
+    float left = -right;
+
+    // Cube’s top-left corner should leave a margin and not go off-screen
+    float halfCubeSize = cubeSize / 2.0f;
+
+    // Position should be (left + margin + halfSize, top - margin - halfSize)
+    initialPosition = vec3(left + margin + halfCubeSize, top - margin - halfCubeSize, 0.0f);
+    bouncingObject.position = initialPosition;
+
     // Load shaders and use the resulting shader program
     GLuint program = InitShader("vshader.glsl", "fshader.glsl");
     glUseProgram(program);
@@ -124,15 +145,6 @@ void init()
 
     // Set projection matrix
     mat4  projection;
-    float aspect = (float)sceneWidth / (float)sceneHeight;
-    float viewHeight = 2.0f;
-    float viewWidth = viewHeight * aspect;
-    // we do ths not to have the aspect same as the scene
-    float top = viewHeight / 2.0f;     // = 1.0
-    float bottom = -top;               // = -1.0
-    float right = viewWidth / 2.0f;    // = aspect
-    float left = -right;               // = -aspect
-
   
     projection = Ortho(left, right, bottom, top, -1.0, 1.0); // Ortho(): user-defined function in mat.h
     glUniformMatrix4fv(Projection, 1, GL_TRUE, projection); // Send projection matrix to shader
@@ -159,9 +171,9 @@ void display(void)
         // Translate returns a 4x4 matrix to move the geometry by the given displacement vector.
     double frameRate = 120;
     double deltaTime = 1.0 / frameRate;
-    bouncingObject.velocity.x = 0.5;
+    bouncingObject.velocity.x = xSpeed;
     bouncingObject.update(deltaTime);
-    mat4  model_view = (Translate(bouncingObject.position) * Scale(0.2, 0.2, 0.2));  // Scale(), Translate(), RotateX(), RotateY(), RotateZ(): user-defined functions in mat.h
+    mat4  model_view = (Translate(bouncingObject.position) * Scale(1.0, 1.0, 1.0));  // Scale(), Translate(), RotateX(), RotateY(), RotateZ(): user-defined functions in mat.h
 
     glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view); // model_view matrix to shader
     glDrawArrays(GL_TRIANGLES, 0, NumVertices);
