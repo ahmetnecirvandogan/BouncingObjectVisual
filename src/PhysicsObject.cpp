@@ -62,3 +62,11 @@
 		}
 		applyForce(resistence_force);
 	}
+
+
+	void setPhysicalValues(PhysicsObject& object, vec3 position, vec3 velocity, vec3 acc, float mass){
+		object.position = position;
+		object.velocity = velocity;
+		object.acceleration = acc;
+		object.mass = mass;
+	}

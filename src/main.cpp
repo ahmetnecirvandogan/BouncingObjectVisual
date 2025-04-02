@@ -11,8 +11,8 @@ const int sceneHeight = 600;
 
 // About the object 
 PhysicsObject bouncingObject;
-float xSpeed = 0.1;
-vec3 initialPosition(- 1.0f, 1.0f, 0);
+float xSpeed = 0.2;
+vec3 computeInitialPosition(float objectSize);
 
 
 typedef vec4  color4;
@@ -92,23 +92,9 @@ void colorcube()
 
 void init()
 {
-    float cubeSize = 0.5f; 
- 
-
-    float aspect = (float)sceneWidth / (float)sceneHeight;
-    float viewHeight = 2.0f;
-    float viewWidth = viewHeight * aspect;
-    float top = viewHeight / 2.0f;
-    float bottom = -top;
-    float right = viewWidth / 2.0f;
-    float left = -right;
-
-   
-    float halfCubeSize = cubeSize / 2.0f;
-
-   
-    initialPosition = vec3(left + halfCubeSize, top  - halfCubeSize, 0.0f);
-    bouncingObject.position = initialPosition;
+    float objectSize = 0.5f;
+    vec3 initPos = computeInitialPosition(objectSize);
+    bouncingObject.position = initPos;
 
     // Load shaders and use the resulting shader program
     GLuint program = InitShader("vshader.glsl", "fshader.glsl");
@@ -144,7 +130,14 @@ void init()
 
     // Set projection matrix
     mat4  projection;
-  
+
+    float aspect = (float)sceneWidth / (float)sceneHeight;
+    float viewHeight = 2.0f;
+    float viewWidth = viewHeight * aspect;
+    float top = viewHeight / 2.0f;
+    float bottom = -top;
+    float right = viewWidth / 2.0f;
+    float left = -right;
     projection = Ortho(left, right, bottom, top, -1.0, 1.0); // Ortho(): user-defined function in mat.h
     glUniformMatrix4fv(Projection, 1, GL_TRUE, projection); // Send projection matrix to shader
 
@@ -186,30 +179,26 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     case GLFW_KEY_ESCAPE: case GLFW_KEY_Q:
         exit(EXIT_SUCCESS);
         break;
+    case GLFW_KEY_I: 
+        // initialize the position.
+        float objectSize = 0.5f;
+        vec3 pos = computeInitialPosition(objectSize);
+        bouncingObject.position = pos;
+        vec3 zerovec(0.0f);
+        bouncingObject.velocity = zerovec;
+        
+        
+        break;
+    //case GLFW_KEY_C:
+    //    // switch the color. 
+    //    break;
+    //case GLFW_KEY_H:
+    //    // 
+
     }
+    
 }
 
-// Specify what to do when a mouse event happens
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
-    if (action == GLFW_PRESS) {
-        switch (button) {
-        case GLFW_MOUSE_BUTTON_RIGHT:    Axis = Xaxis;  break;
-        case GLFW_MOUSE_BUTTON_MIDDLE:  Axis = Yaxis;  break;
-        case GLFW_MOUSE_BUTTON_LEFT:   Axis = Zaxis;  break;
-        }
-    }
-}
-
-// Change the amount of rotation (from scratch) around the current axis of rotation
-void update(void)
-{
-    Theta[Axis] += 4.0;
-
-    if (Theta[Axis] > 360.0) {
-        Theta[Axis] -= 360.0;
-    }
-}
 
 //---------------------------------------------------------------------
 //
@@ -246,8 +235,7 @@ int main()
 
     //Specify which events to recognize and the callback functions to handle them
     glfwSetKeyCallback(window, key_callback);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-
+   
     init();
 
     double frameRate = 120, currentTime, previousTime = 0.0;
@@ -257,7 +245,7 @@ int main()
         currentTime = glfwGetTime();
         if (currentTime - previousTime >= 1 / frameRate) {
             previousTime = currentTime;
-            update();
+            
         }
 
         display();
@@ -272,3 +260,22 @@ int main()
 
 
 
+vec3 computeInitialPosition(float objectSize)
+{
+
+
+    float aspect = (float)sceneWidth / (float)sceneHeight;
+    float viewHeight = 2.0f;
+    float viewWidth = viewHeight * aspect;
+    float top = viewHeight / 2.0f;
+    float bottom = -top;
+    float right = viewWidth / 2.0f;
+    float left = -right;
+
+
+    float halfObjectSize = objectSize / 2.0f;
+
+
+    vec3 initialPosition = vec3(left + halfObjectSize, top - halfObjectSize, 0.0f);
+    return initialPosition;
+}
