@@ -19,12 +19,20 @@
 			bounce(surface);
 		}
 
-		vec3 gravity(0.0, -9.8, 0.0);
+		vec3 gravity(0.0, -0.4, 0.0);
 		vec3 gravitionalForce = gravity*mass;
-		float resistence = 0.2;
+		float resistence = 0.4;
 
 		applyForce(gravitionalForce);
 		applyResistence(resistence);
+
+		if (position.y <= -0.5f && velocity.y < 0.0f)
+		{
+			vec3 surface(0.0, 1.0, 0.0);
+			bounce(surface);
+		}
+
+
 		position = position + 0.5*acceleration*deltaTime*deltaTime + velocity*deltaTime;
 		velocity = velocity + acceleration * deltaTime;
 		acceleration = vec3(0.0, 0.0, 0.0);
@@ -46,6 +54,11 @@
 	void PhysicsObject::applyResistence(float resistenceCoefficient)
 	{
 		//apply force according to the direction of the velocity
-		vec3 resistence_force = - resistenceCoefficient * velocity * length(velocity);
+		vec3 resistence_force = -resistenceCoefficient * velocity;
+		//std::cout << "air resistence: " << resistence_force<< std::endl;
+		if (length(resistence_force) >= 1.0)
+		{
+			resistence_force = normalize(resistence_force) / 10;
+		}
 		applyForce(resistence_force);
 	}
