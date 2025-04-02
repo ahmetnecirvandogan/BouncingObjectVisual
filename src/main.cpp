@@ -92,10 +92,9 @@ void colorcube()
 
 void init()
 {
-    float cubeSize = 0.5f; // the full width/height of the cube (not radius)
-    float margin = 0.1f;   // you can tweak this
+    float cubeSize = 0.5f; 
+ 
 
-    // View volume boundaries from your existing code:
     float aspect = (float)sceneWidth / (float)sceneHeight;
     float viewHeight = 2.0f;
     float viewWidth = viewHeight * aspect;
@@ -104,11 +103,11 @@ void init()
     float right = viewWidth / 2.0f;
     float left = -right;
 
-    // Cube’s top-left corner should leave a margin and not go off-screen
+   
     float halfCubeSize = cubeSize / 2.0f;
 
-    // Position should be (left + margin + halfSize, top - margin - halfSize)
-    initialPosition = vec3(left + margin + halfCubeSize, top - margin - halfCubeSize, 0.0f);
+   
+    initialPosition = vec3(left + halfCubeSize, top  - halfCubeSize, 0.0f);
     bouncingObject.position = initialPosition;
 
     // Load shaders and use the resulting shader program
