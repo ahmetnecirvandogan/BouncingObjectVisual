@@ -19,9 +19,9 @@
 			bounce(surface);
 		}
 
-		vec3 gravity(0.0, -0.4, 0.0);
+		vec3 gravity(0.0, -1.0, 0.0);
 		vec3 gravitionalForce = gravity*mass;
-		float resistence = 0.4;
+		float resistence = 0.1;
 
 		applyForce(gravitionalForce);
 		applyResistence(resistence);
@@ -55,10 +55,10 @@
 	{
 		//apply force according to the direction of the velocity
 		vec3 resistence_force = -resistenceCoefficient * velocity;
-		//std::cout << "air resistence: " << resistence_force<< std::endl;
-		if (length(resistence_force) >= 1.0)
+		std::cout << "air resistence: " << resistence_force << std::endl;
+		if (length(resistence_force) >= 0.5)
 		{
-			resistence_force = normalize(resistence_force) / 10;
+			resistence_force = normalize(resistence_force) / 2;
 		}
 		applyForce(resistence_force);
 	}
