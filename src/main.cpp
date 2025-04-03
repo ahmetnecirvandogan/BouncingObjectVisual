@@ -5,8 +5,62 @@
 #include "PhysicsObject.h"
 #include <vector>
 
+//For background
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 
 GLuint program;
+GLuint texture; // Texture ID
+GLuint backgroundVAO, backgroundVBO; // VAO and VBO for background quad
+
+//For the Background
+void loadTexture(const char* filename) {
+    int width, height, nrChannels;
+    unsigned char* data = stbi_load(filename, &width, &height, &nrChannels, 0);
+    if (data) {
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        if (nrChannels == 3) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        } else if (nrChannels == 4) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        }
+        glGenerateMipmap(GL_TEXTURE_2D);
+        stbi_image_free(data);
+    } else {
+        std::cerr << "Failed to load texture" << std::endl;
+        stbi_image_free(data);
+    }
+}float backgroundVertices[] = {
+    // positions      // texture coords
+    -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+    -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+     1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+     1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+};
+void setupBackground() {
+    glGenVertexArrays(1, &backgroundVAO);
+    glGenBuffers(1, &backgroundVBO);
+
+    glBindVertexArray(backgroundVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, backgroundVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(backgroundVertices), backgroundVertices, GL_STATIC_DRAW);
+
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // texture coord attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+}
+
 
 // About the scene
 const int sceneWidth = 1200;
@@ -65,8 +119,8 @@ GLuint  ModelView, Projection;
 
 // Color uniform location
 GLuint colorLocation;
-vec4 colorFirst(1.0, 0.0f, 0.0f, 1.0f);
-vec4 colorSecond(0.0f, 0.0f, 1.0f, 1.0f);
+vec4 colorFirst(1.0, 0.0f, 0.0f, 1.0f);  // Red
+vec4 colorSecond(0.6f, 0.3f, 0.0f, 1.0f);  // Brown
 vec4 currentColor = colorFirst;
 bool isRed = true;
 
@@ -155,6 +209,12 @@ void generateSphere(float radius) {
 
 void init()
 {
+    
+    //Background initialization
+    loadTexture("toy-story-background.jpg");
+    setupBackground();
+    
+    
     float objectSize = 0.5f;
     vec3 initPos = computeInitialPosition(objectSize);
     bouncingObject.position = initPos;
@@ -204,21 +264,42 @@ void init()
 void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // Render background
+    GLuint backgroundProgram = InitShader("background_vshader.glsl", "background_fshader.glsl");
+    glUseProgram(backgroundProgram);
+    glBindVertexArray(backgroundVAO);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glUniform1i(glGetUniformLocation(backgroundProgram, "texture1"), 0);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    // Render Sphere/Cube
+    glUseProgram(program);
     double frameRate = 120;
     double deltaTime = 1.0 / frameRate;
     bouncingObject.velocity.x = xSpeed;
     bouncingObject.update(deltaTime);
-    mat4 model_view = (Translate(bouncingObject.position) * Scale(1.0, 1.0, 1.0));
+
+    mat4 model_view = Translate(bouncingObject.position); // Start with translation
 
     glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view);
+    glUniform4fv(colorLocation, 1, currentColor);
 
     if (currentObject == CUBE) {
+        // Scale the cube
+        float cubeScale = 1.0f; // Smaller scale for cube
+        model_view = Translate(bouncingObject.position) * Scale(cubeScale, cubeScale, cubeScale);
+        glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view);
         glBindVertexArray(cubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, NumVertices);
     } else if (currentObject == SPHERE) {
+        // Scale the sphere
+        float sphereScale = 0.5f; // Larger scale for sphere (or adjust as needed)
+        model_view = Translate(bouncingObject.position) * Scale(sphereScale, sphereScale, sphereScale);
+        glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view);
         glBindVertexArray(sphereVAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIBO);
-        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0); // Use glDrawElements
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
     }
 
     glFinish();
@@ -337,7 +418,7 @@ int main()
     while (!glfwWindowShouldClose(window))
     {
         
-        
+
         glfwPollEvents();
         currentTime = glfwGetTime();
         if (currentTime - previousTime >= 1 / frameRate) {
@@ -413,5 +494,4 @@ void bindObject(GLuint vPosition) {
         createAndBindBuffer(points_sphere.data(), points_sphere.size() * sizeof(point4), sphereVAO, sphereVBO, vPosition, indices.data(), indices.size() * sizeof(GLuint)); // Added indices for sphere
     }
 }
-
 
