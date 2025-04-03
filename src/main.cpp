@@ -4,47 +4,43 @@
 #include "Angel.h"
 #include "PhysicsObject.h"
 
+
+GLuint program;
+
 // About the scene
 const int sceneWidth = 1200;
 const int sceneHeight = 600;
 
-
 // About the object 
 PhysicsObject bouncingObject;
+float xSpeed = 0.2;
+vec3 computeInitialPosition(float objectSize);
+
+//drawing mode
+GLenum drawingMode = GL_FILL;
 
 
-typedef vec4  color4;
 typedef vec4  point4;
 
 
 const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
 
 point4 points[NumVertices];
-color4 colors[NumVertices];
+
 
 // Vertices of a unit cube centered at origin, sides aligned with axes
 point4 vertices[8] = {
-    point4(-0.5, -0.5,  0.5, 1.0),
-    point4(-0.5,  0.5,  0.5, 1.0),
-    point4(0.5,  0.5,  0.5, 1.0),
-    point4(0.5, -0.5,  0.5, 1.0),
-    point4(-0.5, -0.5, -0.5, 1.0),
-    point4(-0.5,  0.5, -0.5, 1.0),
-    point4(0.5,  0.5, -0.5, 1.0),
-    point4(0.5, -0.5, -0.5, 1.0)
+    point4(-0.25, -0.25,  0.25, 1.0),
+    point4(-0.25,  0.25,  0.25, 1.0),
+    point4(0.25,  0.25,  0.25, 1.0),
+    point4(0.25, -0.25,  0.25, 1.0),
+    point4(-0.25, -0.25, -0.25, 1.0),
+    point4(-0.25,  0.25, -0.25, 1.0),
+    point4(0.25,  0.25, -0.25, 1.0),
+    point4(0.25, -0.25, -0.25, 1.0)
 };
 
-// RGBA olors
-color4 vertex_colors[8] = {
-    color4(0.0, 0.0, 0.0, 1.0),  // black
-    color4(1.0, 0.0, 0.0, 1.0),  // red
-    color4(1.0, 1.0, 0.0, 1.0),  // yellow
-    color4(0.0, 1.0, 0.0, 1.0),  // green
-    color4(0.0, 0.0, 1.0, 1.0),  // blue
-    color4(1.0, 0.0, 1.0, 1.0),  // magenta
-    color4(1.0, 1.0, 1.0, 1.0),  // white
-    color4(0.0, 1.0, 1.0, 1.0)   // cyan
-};
+
 
 // Array of rotation angles (in degrees) for each coordinate axis
 enum { Xaxis = 0, Yaxis = 1, Zaxis = 2, NumAxes = 3 };
@@ -54,6 +50,13 @@ GLfloat  Theta[NumAxes] = { 0.0, 0.0, 0.0 };
 // Model-view and projection matrices uniform location
 GLuint  ModelView, Projection;
 
+// Color uniform location
+GLuint colorLocation;
+vec4 colorFirst(1.0, 0.0f, 0.0f, 1.0f);
+vec4 colorSecond(0.0f, 0.0f, 1.0f, 1.0f);
+vec4 currentColor = colorFirst;
+bool isRed = true;
+
 //----------------------------------------------------------------------------
 
 // quad generates two triangles for each face and assigns colors to the vertices
@@ -61,19 +64,19 @@ int Index = 0;
 
 void quad(int a, int b, int c, int d)
 {
-    colors[Index] = vertex_colors[a]; points[Index] = vertices[a]; Index++;
-    colors[Index] = vertex_colors[b]; points[Index] = vertices[b]; Index++;
-    colors[Index] = vertex_colors[c]; points[Index] = vertices[c]; Index++;
-    colors[Index] = vertex_colors[a]; points[Index] = vertices[a]; Index++;
-    colors[Index] = vertex_colors[c]; points[Index] = vertices[c]; Index++;
-    colors[Index] = vertex_colors[d]; points[Index] = vertices[d]; Index++;
+    points[Index] = vertices[a]; Index++;
+    points[Index] = vertices[b]; Index++;
+    points[Index] = vertices[c]; Index++;
+    points[Index] = vertices[a]; Index++;
+    points[Index] = vertices[c]; Index++;
+    points[Index] = vertices[d]; Index++;
 }
 
 //----------------------------------------------------------------------------
 
 // generate 12 triangles: 36 vertices and 36 colors
 
-void colorcube()
+void cube()
 {
     quad(1, 0, 3, 2);
     quad(2, 3, 7, 6);
@@ -90,11 +93,16 @@ void colorcube()
 
 void init()
 {
+    float objectSize = 0.5f;
+    vec3 initPos = computeInitialPosition(objectSize);
+    bouncingObject.position = initPos;
+
     // Load shaders and use the resulting shader program
-    GLuint program = InitShader("vshader.glsl", "fshader.glsl");
+    program = InitShader("vshader.glsl", "fshader.glsl");
     glUseProgram(program);
 
-    colorcube(); // create the cube in terms of 6 faces each of which is made of two triangles
+    cube(); // create the cube in terms of 6 faces each of which is made of two triangles
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // Create a vertex array object
     GLuint vao;
@@ -105,18 +113,19 @@ void init()
     GLuint buffer;
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(points) + sizeof(colors), NULL, GL_STATIC_DRAW);
+    //glBufferData(GL_ARRAY_BUFFER, sizeof(points) + sizeof(colors), NULL, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points) , NULL, GL_STATIC_DRAW);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points), points);
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(points), sizeof(colors), colors);
+    //glBufferSubData(GL_ARRAY_BUFFER, sizeof(points), sizeof(colors), colors);
 
     // set up vertex arrays
     GLuint vPosition = glGetAttribLocation(program, "vPosition");
     glEnableVertexAttribArray(vPosition);
     glVertexAttribPointer(vPosition, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 
-    GLuint vColor = glGetAttribLocation(program, "vColor");
-    glEnableVertexAttribArray(vColor);
-    glVertexAttribPointer(vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeof(points)));
+    // Retrieve color uniform variable locations
+    colorLocation = glGetUniformLocation(program, "color");
+    glUniform4fv(colorLocation, 1, currentColor);
 
     // Retrieve transformation uniform variable locations
     ModelView = glGetUniformLocation(program, "ModelView");
@@ -124,16 +133,14 @@ void init()
 
     // Set projection matrix
     mat4  projection;
+
     float aspect = (float)sceneWidth / (float)sceneHeight;
     float viewHeight = 2.0f;
     float viewWidth = viewHeight * aspect;
-    // we do ths not to have the aspect same as the scene
-    float top = viewHeight / 2.0f;     // = 1.0
-    float bottom = -top;               // = -1.0
-    float right = viewWidth / 2.0f;    // = aspect
-    float left = -right;               // = -aspect
-
-  
+    float top = viewHeight / 2.0f;
+    float bottom = -top;
+    float right = viewWidth / 2.0f;
+    float left = -right;
     projection = Ortho(left, right, bottom, top, -1.0, 1.0); // Ortho(): user-defined function in mat.h
     glUniformMatrix4fv(Projection, 1, GL_TRUE, projection); // Send projection matrix to shader
 
@@ -159,45 +166,76 @@ void display(void)
         // Translate returns a 4x4 matrix to move the geometry by the given displacement vector.
     double frameRate = 120;
     double deltaTime = 1.0 / frameRate;
-    bouncingObject.velocity.x = 0.5;
+    bouncingObject.velocity.x = xSpeed;
     bouncingObject.update(deltaTime);
-    mat4  model_view = (Translate(bouncingObject.position) * Scale(0.2, 0.2, 0.2));  // Scale(), Translate(), RotateX(), RotateY(), RotateZ(): user-defined functions in mat.h
+    mat4  model_view = (Translate(bouncingObject.position) * Scale(1.0, 1.0, 1.0));  // Scale(), Translate(), RotateX(), RotateY(), RotateZ(): user-defined functions in mat.h
 
     glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view); // model_view matrix to shader
     glDrawArrays(GL_TRIANGLES, 0, NumVertices);
     glFinish();
 }
 
-// Specify what to do when a keyboard event happens, i.e., when the user presses or releases a key
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+    // not to be triggered in key release situation 
+    if (action != GLFW_PRESS) return;
     switch (key) {
     case GLFW_KEY_ESCAPE: case GLFW_KEY_Q:
         exit(EXIT_SUCCESS);
         break;
+    case GLFW_KEY_I:
+    {
+        float objectSize = 0.5f;
+        vec3 pos = computeInitialPosition(objectSize);
+        bouncingObject.position = pos;
+        vec3 zerovec(0.0f);
+        bouncingObject.velocity = zerovec;
+        break;
     }
+
+    case GLFW_KEY_C:
+        // switch the color. 
+        isRed = !isRed;
+        currentColor = isRed ? colorFirst : colorSecond;
+        glUseProgram(program); // just in case
+        glUniform4fv(colorLocation, 1, currentColor);
+        
+    case GLFW_KEY_H:
+        // display the help commands  
+        std::cout << "i -- initialize the pose (top left corner of the window)\nc-- switch between two colors(of your choice), which is used to draw lines or triangles.\nh -- help; print explanation of your input control(simply to the command line)\nq -- quit(exit) the program" << std::endl;
+        break;
+
+    }
+    
 }
 
-// Specify what to do when a mouse event happens
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     if (action == GLFW_PRESS) {
         switch (button) {
-        case GLFW_MOUSE_BUTTON_RIGHT:    Axis = Xaxis;  break;
-        case GLFW_MOUSE_BUTTON_MIDDLE:  Axis = Yaxis;  break;
-        case GLFW_MOUSE_BUTTON_LEFT:   Axis = Zaxis;  break;
+       
+        case GLFW_MOUSE_BUTTON_RIGHT: 
+        {
+            // switch object type
+            break;
+        }
+       
+        case GLFW_MOUSE_BUTTON_LEFT: 
+        {
+            // switch drawing type
+            drawingMode = (drawingMode == GL_LINE) ? GL_FILL : GL_LINE;
+            glPolygonMode(GL_FRONT_AND_BACK, drawingMode);
+            //std::cout << "Drawing mode: " << (drawingMode == GL_LINE ? "Wireframe" : "Solid") << std::endl;
+
+        }
         }
     }
 }
 
-// Change the amount of rotation (from scratch) around the current axis of rotation
-void update(void)
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    Theta[Axis] += 4.0;
-
-    if (Theta[Axis] > 360.0) {
-        Theta[Axis] -= 360.0;
-    }
+    glViewport(0, 0, width, height);
 }
 
 //---------------------------------------------------------------------
@@ -236,6 +274,7 @@ int main()
     //Specify which events to recognize and the callback functions to handle them
     glfwSetKeyCallback(window, key_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
     init();
 
@@ -246,7 +285,7 @@ int main()
         currentTime = glfwGetTime();
         if (currentTime - previousTime >= 1 / frameRate) {
             previousTime = currentTime;
-            update();
+            
         }
 
         display();
@@ -259,5 +298,26 @@ int main()
 }
 
 
+
+// Simulate the movement again
+vec3 computeInitialPosition(float objectSize)
+{
+
+
+    float aspect = (float)sceneWidth / (float)sceneHeight;
+    float viewHeight = 2.0f;
+    float viewWidth = viewHeight * aspect;
+    float top = viewHeight / 2.0f;
+    float bottom = -top;
+    float right = viewWidth / 2.0f;
+    float left = -right;
+
+
+    float halfObjectSize = objectSize / 2.0f;
+
+
+    vec3 initialPosition = vec3(left + halfObjectSize, top - halfObjectSize, 0.0f);
+    return initialPosition;
+}
 
 
