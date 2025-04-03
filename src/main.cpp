@@ -8,6 +8,7 @@
 
 GLuint program;
 
+
 // About the scene
 const int sceneWidth = 1200;
 const int sceneHeight = 600;
