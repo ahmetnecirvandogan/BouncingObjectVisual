@@ -4,10 +4,12 @@
 #include "Angel.h"
 #include "PhysicsObject.h"
 
+
+GLuint program;
+
 // About the scene
 const int sceneWidth = 1200;
 const int sceneHeight = 600;
-
 
 // About the object 
 PhysicsObject bouncingObject;
@@ -18,14 +20,13 @@ vec3 computeInitialPosition(float objectSize);
 GLenum drawingMode = GL_FILL;
 
 
-typedef vec4  color4;
 typedef vec4  point4;
 
 
 const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
 
 point4 points[NumVertices];
-color4 colors[NumVertices];
+
 
 // Vertices of a unit cube centered at origin, sides aligned with axes
 point4 vertices[8] = {
@@ -39,17 +40,7 @@ point4 vertices[8] = {
     point4(0.25, -0.25, -0.25, 1.0)
 };
 
-// RGBA olors
-color4 vertex_colors[8] = {
-    color4(0.0, 0.0, 0.0, 1.0),  // black
-    color4(1.0, 0.0, 0.0, 1.0),  // red
-    color4(1.0, 1.0, 0.0, 1.0),  // yellow
-    color4(0.0, 1.0, 0.0, 1.0),  // green
-    color4(0.0, 0.0, 1.0, 1.0),  // blue
-    color4(1.0, 0.0, 1.0, 1.0),  // magenta
-    color4(1.0, 1.0, 1.0, 1.0),  // white
-    color4(0.0, 1.0, 1.0, 1.0)   // cyan
-};
+
 
 // Array of rotation angles (in degrees) for each coordinate axis
 enum { Xaxis = 0, Yaxis = 1, Zaxis = 2, NumAxes = 3 };
@@ -59,6 +50,13 @@ GLfloat  Theta[NumAxes] = { 0.0, 0.0, 0.0 };
 // Model-view and projection matrices uniform location
 GLuint  ModelView, Projection;
 
+// Color uniform location
+GLuint colorLocation;
+vec4 colorFirst(1.0, 0.0f, 0.0f, 1.0f);
+vec4 colorSecond(0.0f, 0.0f, 1.0f, 1.0f);
+vec4 currentColor = colorFirst;
+bool isRed = true;
+
 //----------------------------------------------------------------------------
 
 // quad generates two triangles for each face and assigns colors to the vertices
@@ -66,19 +64,19 @@ int Index = 0;
 
 void quad(int a, int b, int c, int d)
 {
-    colors[Index] = vertex_colors[a]; points[Index] = vertices[a]; Index++;
-    colors[Index] = vertex_colors[b]; points[Index] = vertices[b]; Index++;
-    colors[Index] = vertex_colors[c]; points[Index] = vertices[c]; Index++;
-    colors[Index] = vertex_colors[a]; points[Index] = vertices[a]; Index++;
-    colors[Index] = vertex_colors[c]; points[Index] = vertices[c]; Index++;
-    colors[Index] = vertex_colors[d]; points[Index] = vertices[d]; Index++;
+    points[Index] = vertices[a]; Index++;
+    points[Index] = vertices[b]; Index++;
+    points[Index] = vertices[c]; Index++;
+    points[Index] = vertices[a]; Index++;
+    points[Index] = vertices[c]; Index++;
+    points[Index] = vertices[d]; Index++;
 }
 
 //----------------------------------------------------------------------------
 
 // generate 12 triangles: 36 vertices and 36 colors
 
-void colorcube()
+void cube()
 {
     quad(1, 0, 3, 2);
     quad(2, 3, 7, 6);
@@ -100,10 +98,10 @@ void init()
     bouncingObject.position = initPos;
 
     // Load shaders and use the resulting shader program
-    GLuint program = InitShader("vshader.glsl", "fshader.glsl");
+    program = InitShader("vshader.glsl", "fshader.glsl");
     glUseProgram(program);
 
-    colorcube(); // create the cube in terms of 6 faces each of which is made of two triangles
+    cube(); // create the cube in terms of 6 faces each of which is made of two triangles
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // Create a vertex array object
@@ -115,18 +113,19 @@ void init()
     GLuint buffer;
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(points) + sizeof(colors), NULL, GL_STATIC_DRAW);
+    //glBufferData(GL_ARRAY_BUFFER, sizeof(points) + sizeof(colors), NULL, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points) , NULL, GL_STATIC_DRAW);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points), points);
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(points), sizeof(colors), colors);
+    //glBufferSubData(GL_ARRAY_BUFFER, sizeof(points), sizeof(colors), colors);
 
     // set up vertex arrays
     GLuint vPosition = glGetAttribLocation(program, "vPosition");
     glEnableVertexAttribArray(vPosition);
     glVertexAttribPointer(vPosition, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
 
-    GLuint vColor = glGetAttribLocation(program, "vColor");
-    glEnableVertexAttribArray(vColor);
-    glVertexAttribPointer(vColor, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(sizeof(points)));
+    // Retrieve color uniform variable locations
+    colorLocation = glGetUniformLocation(program, "color");
+    glUniform4fv(colorLocation, 1, currentColor);
 
     // Retrieve transformation uniform variable locations
     ModelView = glGetUniformLocation(program, "ModelView");
@@ -195,9 +194,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         break;
     }
 
-    //case GLFW_KEY_C:
-    //    // switch the color. 
-    //    break;
+    case GLFW_KEY_C:
+        // switch the color. 
+        isRed = !isRed;
+        currentColor = isRed ? colorFirst : colorSecond;
+        glUseProgram(program); // just in case
+        glUniform4fv(colorLocation, 1, currentColor);
+        
     case GLFW_KEY_H:
         // display the help commands  
         std::cout << "i -- initialize the pose (top left corner of the window)\nc-- switch between two colors(of your choice), which is used to draw lines or triangles.\nh -- help; print explanation of your input control(simply to the command line)\nq -- quit(exit) the program" << std::endl;
