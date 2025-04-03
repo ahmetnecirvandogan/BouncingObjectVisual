@@ -3,6 +3,7 @@
 #include <iostream>
 #include "Angel.h"
 #include "PhysicsObject.h"
+#include <vector>
 
 
 GLuint program;
@@ -19,17 +20,33 @@ vec3 computeInitialPosition(float objectSize);
 //drawing mode
 GLenum drawingMode = GL_FILL;
 
+// object mode
+enum ObjectMode {
+    CUBE,
+    SPHERE,
+    BUNNY
+};
 
+ObjectMode currentObject = CUBE;
+
+// setup for cube  
 typedef vec4  point4;
-
-
 const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
+point4 points_cube[NumVertices];
 
-point4 points[NumVertices];
+
+// setup for sphere
+const int latitudeBands = 20; //Divides the sphere along the vertical axis
+const int longitudeBands = 20; //Divides the sphere along the horizontal axis
+
+std::vector<point4> points_sphere;
+
+GLuint cubeVAO, cubeVBO;
+GLuint sphereVAO, sphereVBO;
 
 
-// Vertices of a unit cube centered at origin, sides aligned with axes
-point4 vertices[8] = {
+// Vertices of the cube 
+point4 cube_vertices[8] = {
     point4(-0.25, -0.25,  0.25, 1.0),
     point4(-0.25,  0.25,  0.25, 1.0),
     point4(0.25,  0.25,  0.25, 1.0),
@@ -40,12 +57,8 @@ point4 vertices[8] = {
     point4(0.25, -0.25, -0.25, 1.0)
 };
 
-
-
-// Array of rotation angles (in degrees) for each coordinate axis
-enum { Xaxis = 0, Yaxis = 1, Zaxis = 2, NumAxes = 3 };
-int      Axis = Xaxis;
-GLfloat  Theta[NumAxes] = { 0.0, 0.0, 0.0 };
+// Vertices of the sphere
+std::vector<GLuint> indices;
 
 // Model-view and projection matrices uniform location
 GLuint  ModelView, Projection;
@@ -57,26 +70,29 @@ vec4 colorSecond(0.0f, 0.0f, 1.0f, 1.0f);
 vec4 currentColor = colorFirst;
 bool isRed = true;
 
+GLuint vPosition;
+
+void bindObject(GLuint vPosition);
 //----------------------------------------------------------------------------
+
+// generation of the cube
 
 // quad generates two triangles for each face and assigns colors to the vertices
 int Index = 0;
 
 void quad(int a, int b, int c, int d)
 {
-    points[Index] = vertices[a]; Index++;
-    points[Index] = vertices[b]; Index++;
-    points[Index] = vertices[c]; Index++;
-    points[Index] = vertices[a]; Index++;
-    points[Index] = vertices[c]; Index++;
-    points[Index] = vertices[d]; Index++;
+    points_cube[Index] = cube_vertices[a]; Index++;
+    points_cube[Index] = cube_vertices[b]; Index++;
+    points_cube[Index] = cube_vertices[c]; Index++;
+    points_cube[Index] = cube_vertices[a]; Index++;
+    points_cube[Index] = cube_vertices[c]; Index++;
+    points_cube[Index] = cube_vertices[d]; Index++;
 }
-
-//----------------------------------------------------------------------------
 
 // generate 12 triangles: 36 vertices and 36 colors
 
-void cube()
+void generateCube()
 {
     quad(1, 0, 3, 2);
     quad(2, 3, 7, 6);
@@ -84,6 +100,48 @@ void cube()
     quad(6, 5, 1, 2);
     quad(4, 5, 6, 7);
     quad(5, 4, 0, 1);
+}
+
+// generation of the sphere
+
+
+void generateSphere(float radius) {
+    for (int lat = 0; lat <= latitudeBands; lat++) {
+        float theta = lat * M_PI / latitudeBands;  // Latitude angle
+        float sinTheta = sin(theta);
+        float cosTheta = cos(theta);
+
+        for (int lon = 0; lon <= longitudeBands; lon++) {
+            float phi = lon * 2 * M_PI / longitudeBands;  // Longitude angle
+            float sinPhi = sin(phi);
+            float cosPhi = cos(phi);
+
+            float x = cosPhi * sinTheta;
+            float y = cosTheta;
+            float z = sinPhi * sinTheta;
+
+            points_sphere.push_back(point4(radius * x, radius * y, radius * z, 1.0));
+
+        
+        }
+    }
+
+    // Now we need to generate the indices for the triangles (proper sphere mesh)
+    for (int lat = 0; lat < latitudeBands - 1; lat++) {
+        for (int lon = 0; lon < longitudeBands - 1; lon++) {
+            int first = lat * (longitudeBands + 1) + lon;
+            int second = first + longitudeBands + 1;
+
+            // Two triangles for each quad face of the sphere
+            indices.push_back(first);
+            indices.push_back(second);
+            indices.push_back(first + 1);
+
+            indices.push_back(second);
+            indices.push_back(second + 1);
+            indices.push_back(first + 1);
+        }
+    }
 }
 
 //---------------------------------------------------------------------
@@ -100,28 +158,11 @@ void init()
     // Load shaders and use the resulting shader program
     program = InitShader("vshader.glsl", "fshader.glsl");
     glUseProgram(program);
-
-    cube(); // create the cube in terms of 6 faces each of which is made of two triangles
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    // Create a vertex array object
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    // Create and initialize a buffer object
-    GLuint buffer;
-    glGenBuffers(1, &buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    //glBufferData(GL_ARRAY_BUFFER, sizeof(points) + sizeof(colors), NULL, GL_STATIC_DRAW);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(points) , NULL, GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points), points);
-    //glBufferSubData(GL_ARRAY_BUFFER, sizeof(points), sizeof(colors), colors);
-
-    // set up vertex arrays
-    GLuint vPosition = glGetAttribLocation(program, "vPosition");
-    glEnableVertexAttribArray(vPosition);
-    glVertexAttribPointer(vPosition, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+    // bind the object to the shader
+    vPosition = glGetAttribLocation(program, "vPosition");
+    bindObject(vPosition);  // pass it in
 
     // Retrieve color uniform variable locations
     colorLocation = glGetUniformLocation(program, "color");
@@ -171,7 +212,15 @@ void display(void)
     mat4  model_view = (Translate(bouncingObject.position) * Scale(1.0, 1.0, 1.0));  // Scale(), Translate(), RotateX(), RotateY(), RotateZ(): user-defined functions in mat.h
 
     glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view); // model_view matrix to shader
-    glDrawArrays(GL_TRIANGLES, 0, NumVertices);
+    if (currentObject == CUBE) {
+        glBindVertexArray(cubeVAO);
+        glDrawArrays(GL_TRIANGLES, 0, NumVertices);
+    }
+    else if (currentObject == SPHERE) {
+        glBindVertexArray(sphereVAO);
+        glDrawArrays(GL_TRIANGLES, 0, points_sphere.size());
+    }
+
     glFinish();
 }
 
@@ -200,7 +249,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         currentColor = isRed ? colorFirst : colorSecond;
         glUseProgram(program); // just in case
         glUniform4fv(colorLocation, 1, currentColor);
-        
+        break;
     case GLFW_KEY_H:
         // display the help commands  
         std::cout << "i -- initialize the pose (top left corner of the window)\nc-- switch between two colors(of your choice), which is used to draw lines or triangles.\nh -- help; print explanation of your input control(simply to the command line)\nq -- quit(exit) the program" << std::endl;
@@ -218,6 +267,9 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         case GLFW_MOUSE_BUTTON_RIGHT: 
         {
             // switch object type
+            currentObject = (currentObject == CUBE) ? SPHERE : CUBE;
+            bindObject(vPosition);
+            glUseProgram(program);
             break;
         }
        
@@ -281,6 +333,7 @@ int main()
     double frameRate = 120, currentTime, previousTime = 0.0;
     while (!glfwWindowShouldClose(window))
     {
+
         glfwPollEvents();
         currentTime = glfwGetTime();
         if (currentTime - previousTime >= 1 / frameRate) {
@@ -318,6 +371,42 @@ vec3 computeInitialPosition(float objectSize)
 
     vec3 initialPosition = vec3(left + halfObjectSize, top - halfObjectSize, 0.0f);
     return initialPosition;
+}
+
+
+
+
+void createAndBindBuffer(const void* data, size_t dataSize, GLuint& vao, GLuint& vbo, GLuint vPosition)
+{
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, dataSize, NULL, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, dataSize, data);
+
+    // Vertex attribute pointer and enabling (MUST be done while VAO is bound)
+    glVertexAttribPointer(vPosition, 4, GL_FLOAT, GL_FALSE, 0, (void*)0); // assuming point4 = vec4
+    glEnableVertexAttribArray(vPosition);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+
+void bindObject(GLuint vPosition)
+{
+    if (currentObject == CUBE)
+    {
+        generateCube();
+        createAndBindBuffer(points_cube, sizeof(points_cube), cubeVAO, cubeVBO, vPosition);
+    }
+    else if (currentObject == SPHERE)
+    {
+        generateSphere(0.5f);
+        createAndBindBuffer(points_sphere.data(), points_sphere.size() * sizeof(point4), sphereVAO, sphereVBO, vPosition);
+    }
 }
 
 
