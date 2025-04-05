@@ -117,6 +117,7 @@ point4 cube_vertices[8] = {
 // Model-view and projection matrices uniform location
 GLuint  ModelView, Projection;
 
+
 // Color uniform location
 GLuint colorLocation;
 vec4 colorFirst(1.0, 0.0f, 0.0f, 1.0f);  // Red
@@ -260,6 +261,13 @@ void init()
 //
 // display
 //
+// Array of rotation angles (in degrees) for each coordinate axis
+enum { Xaxis = 0, Yaxis = 1, Zaxis = 2, NumAxes = 3 };
+int Axis = Yaxis; // Or your desired initial rotation axis
+GLfloat Theta[NumAxes] = { 0.0, 0.0, 0.0 };
+float rotationSpeed = 50.0f; // Adjust rotation speed (degrees per second)
+
+
 
 void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -280,23 +288,30 @@ void display(void) {
     bouncingObject.velocity.x = xSpeed;
     bouncingObject.update(deltaTime);
 
-    mat4 model_view = Translate(bouncingObject.position); // Start with translation
-
-    glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view);
+    const vec3 displacement( 0.0, 0.0, 0.0 );
+    mat4 model_view = Translate(bouncingObject.position) *
+                      RotateX(Theta[Xaxis]) *
+                      RotateY(Theta[Yaxis]) *
+                      RotateZ(Theta[Zaxis]);
+    
+    glUniformMatrix4fv( ModelView, 1, GL_TRUE, model_view ); // model_view matrix to shader
     glUniform4fv(colorLocation, 1, currentColor);
 
     if (currentObject == CUBE) {
         // Scale the cube
-        float cubeScale = 1.0f; // Smaller scale for cube
-        model_view = Translate(bouncingObject.position) * Scale(cubeScale, cubeScale, cubeScale);
-        glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view);
+        float cubeScale = 1.0f;
+        mat4 cube_model_view = model_view * Scale(cubeScale, cubeScale, cubeScale);
+        glUniformMatrix4fv(ModelView, 1, GL_TRUE, cube_model_view);
         glBindVertexArray(cubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, NumVertices);
     } else if (currentObject == SPHERE) {
-        // Scale the sphere
-        float sphereScale = 0.5f; // Larger scale for sphere (or adjust as needed)
-        model_view = Translate(bouncingObject.position) * Scale(sphereScale, sphereScale, sphereScale);
-        glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view);
+        float sphereScale = 0.48f; // Reduce this value to make the sphere smaller
+        mat4 sphere_model_view = Translate(bouncingObject.position) *
+                                 RotateX(Theta[Xaxis]) *
+                                 RotateY(Theta[Yaxis]) *
+                                 RotateZ(Theta[Zaxis]) *
+                                 Scale(sphereScale, sphereScale, sphereScale);
+        glUniformMatrix4fv(ModelView, 1, GL_TRUE, sphere_model_view);
         glBindVertexArray(sphereVAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIBO);
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
@@ -304,6 +319,7 @@ void display(void) {
 
     glFinish();
 }
+
 
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -414,17 +430,20 @@ int main()
 
     init();
 
-    double frameRate = 120, currentTime, previousTime = 0.0;
-    while (!glfwWindowShouldClose(window))
-    {
-        
+    double frameRate = 120.0;
+    double currentTime, previousTime = glfwGetTime();
 
+    while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        currentTime = glfwGetTime();
-        if (currentTime - previousTime >= 1 / frameRate) {
-            previousTime = currentTime;
-            
-        }
+
+        double currentTime = glfwGetTime();
+        double deltaTime = currentTime - previousTime;
+        previousTime = currentTime;
+
+        Theta[Axis] += rotationSpeed * deltaTime;
+        if (Theta[Axis] > 360.0f) Theta[Axis] -= 360.0f;
+        else if (Theta[Axis] < 0.0f) Theta[Axis] += 360.0f;
+
         display();
         glfwSwapBuffers(window);
     }
@@ -494,4 +513,3 @@ void bindObject(GLuint vPosition) {
         createAndBindBuffer(points_sphere.data(), points_sphere.size() * sizeof(point4), sphereVAO, sphereVBO, vPosition, indices.data(), indices.size() * sizeof(GLuint)); // Added indices for sphere
     }
 }
-
