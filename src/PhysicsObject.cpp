@@ -28,7 +28,6 @@
         position = position + 0.5*acceleration*deltaTime*deltaTime + velocity*deltaTime;
         velocity = velocity + acceleration * deltaTime;
         acceleration = vec3(0.0, 0.0, 0.0);
-        std::cout << "y value" << position.y << std::endl;
     }
 
     void PhysicsObject::applyForce(vec3 force)
@@ -49,4 +48,3 @@
         vec3 resistence_force = - resistenceCoefficient * velocity * length(velocity);
         applyForce(resistence_force);
     }
-
