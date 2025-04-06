@@ -29,16 +29,19 @@ void loadTexture(const char* filename) {
 
         if (nrChannels == 3) {
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        } else if (nrChannels == 4) {
+        }
+        else if (nrChannels == 4) {
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
         }
         glGenerateMipmap(GL_TEXTURE_2D);
         stbi_image_free(data);
-    } else {
+    }
+    else {
         std::cerr << "Failed to load texture" << std::endl;
         stbi_image_free(data);
     }
-}float backgroundVertices[] = {
+}
+float backgroundVertices[] = {
     // positions      // texture coords
     -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
     -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
@@ -46,6 +49,7 @@ void loadTexture(const char* filename) {
      1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
 };
 void setupBackground() {
+    
     glGenVertexArrays(1, &backgroundVAO);
     glGenBuffers(1, &backgroundVBO);
 
@@ -147,8 +151,8 @@ void quad(int a, int b, int c, int d)
     points_cube[Index] = cube_vertices[a]; Index++;
     points_cube[Index] = cube_vertices[c]; Index++;
     points_cube[Index] = cube_vertices[d]; Index++;
-    
-   
+
+
 }
 
 // generate 12 triangles: 36 vertices and 36 colors
@@ -209,13 +213,13 @@ void generateSphere(float radius) {
 //
 
 void init()
-{
-    
+{   
+   
     //Background initialization
     loadTexture("toy-story-background.jpg");
     setupBackground();
-    
-    
+
+
     float objectSize = 0.5f;
     vec3 initPos = computeInitialPosition(objectSize);
     bouncingObject.position = initPos;
@@ -224,6 +228,10 @@ void init()
     program = InitShader("vshader.glsl", "fshader.glsl");
     glUseProgram(program);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    glEnable(GL_LINE_SMOOTH);
+    GLfloat line_width = 5.0f;
+    glLineWidth(line_width);
 
     // bind the object to the shader
     vPosition = glGetAttribLocation(program, "vPosition");
@@ -250,7 +258,7 @@ void init()
     projection = Ortho(left, right, bottom, top, -1.0, 1.0); // Ortho(): user-defined function in mat.h
     glUniformMatrix4fv(Projection, 1, GL_TRUE, projection); // Send projection matrix to shader
 
-   
+
 
 
     glEnable(GL_DEPTH_TEST);
@@ -273,6 +281,7 @@ void display(void) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Render background
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     GLuint backgroundProgram = InitShader("background_vshader.glsl", "background_fshader.glsl");
     glUseProgram(backgroundProgram);
     glBindVertexArray(backgroundVAO);
@@ -282,19 +291,20 @@ void display(void) {
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     // Render Sphere/Cube
+    glPolygonMode(GL_FRONT_AND_BACK, drawingMode);
     glUseProgram(program);
     double frameRate = 120;
     double deltaTime = 1.0 / frameRate;
     bouncingObject.velocity.x = xSpeed;
     bouncingObject.update(deltaTime);
 
-    const vec3 displacement( 0.0, 0.0, 0.0 );
+    const vec3 displacement(0.0, 0.0, 0.0);
     mat4 model_view = Translate(bouncingObject.position) *
-                      RotateX(Theta[Xaxis]) *
-                      RotateY(Theta[Yaxis]) *
-                      RotateZ(Theta[Zaxis]);
-    
-    glUniformMatrix4fv( ModelView, 1, GL_TRUE, model_view ); // model_view matrix to shader
+        RotateX(Theta[Xaxis]) *
+        RotateY(Theta[Yaxis]) *
+        RotateZ(Theta[Zaxis]);
+
+    glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view); // model_view matrix to shader
     glUniform4fv(colorLocation, 1, currentColor);
 
     if (currentObject == CUBE) {
@@ -304,13 +314,14 @@ void display(void) {
         glUniformMatrix4fv(ModelView, 1, GL_TRUE, cube_model_view);
         glBindVertexArray(cubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, NumVertices);
-    } else if (currentObject == SPHERE) {
+    }
+    else if (currentObject == SPHERE) {
         float sphereScale = 0.48f; // Reduce this value to make the sphere smaller
         mat4 sphere_model_view = Translate(bouncingObject.position) *
-                                 RotateX(Theta[Xaxis]) *
-                                 RotateY(Theta[Yaxis]) *
-                                 RotateZ(Theta[Zaxis]) *
-                                 Scale(sphereScale, sphereScale, sphereScale);
+            RotateX(Theta[Xaxis]) *
+            RotateY(Theta[Yaxis]) *
+            RotateZ(Theta[Zaxis]) *
+            Scale(sphereScale, sphereScale, sphereScale);
         glUniformMatrix4fv(ModelView, 1, GL_TRUE, sphere_model_view);
         glBindVertexArray(sphereVAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIBO);
@@ -333,10 +344,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     case GLFW_KEY_I:
     {
         float objectSize;
-        if(currentObject == CUBE){
+        if (currentObject == CUBE) {
             objectSize = 1.0f;
         }
-        else if(currentObject == SPHERE){
+        else if (currentObject == SPHERE) {
             objectSize = 0.48f;
         }
         vec3 pos = computeInitialPosition(objectSize);
@@ -359,26 +370,26 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         break;
 
     }
-    
+
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     if (action == GLFW_PRESS) {
         switch (button) {
-       
+
         case GLFW_MOUSE_BUTTON_RIGHT:
         {
             // switch object type
             currentObject = (currentObject == CUBE) ? SPHERE : CUBE;
-            
-            
-            
+
+
+
             bindObject(vPosition);
             glUseProgram(program);
             break;
         }
-       
+
         case GLFW_MOUSE_BUTTON_LEFT:
         {
             // switch drawing type
@@ -414,7 +425,7 @@ int main()
 
     GLFWwindow* window = glfwCreateWindow(sceneWidth, sceneHeight, "Spin Cube", NULL, NULL);
     glfwMakeContextCurrent(window);
-    
+
     if (!window)
     {
         glfwTerminate();
@@ -439,12 +450,12 @@ int main()
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        
+
         double currentTime = glfwGetTime();
         double deltaTime = currentTime - previousTime;
         previousTime = currentTime;
 
-        
+
         Theta[Axis] += rotationSpeed * deltaTime;
         if (Theta[Axis] > 360.0f) Theta[Axis] -= 360.0f;
         else if (Theta[Axis] < 0.0f) Theta[Axis] += 360.0f;
@@ -452,12 +463,12 @@ int main()
         display();
         glfwSwapBuffers(window);
     }
-    
+
     glfwDestroyWindow(window);
     glfwTerminate();
     exit(EXIT_SUCCESS);
-    
-    
+
+
 }
 
 
@@ -500,8 +511,8 @@ void createAndBindBuffer(const void* data, size_t dataSize, GLuint& vao, GLuint&
         glGenBuffers(1, &ibo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesSize, indicesData, GL_STATIC_DRAW);
-        if(vao==sphereVAO) sphereIBO = ibo;
-        if(vao==cubeVAO) cubeIBO = ibo;
+        if (vao == sphereVAO) sphereIBO = ibo;
+        if (vao == cubeVAO) cubeIBO = ibo;
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -513,7 +524,8 @@ void bindObject(GLuint vPosition) {
     if (currentObject == CUBE) {
         generateCube();
         createAndBindBuffer(points_cube, sizeof(points_cube), cubeVAO, cubeVBO, vPosition); // No indices for cube in this case
-    } else if (currentObject == SPHERE) {
+    }
+    else if (currentObject == SPHERE) {
         generateSphere(0.5f);
         createAndBindBuffer(points_sphere.data(), points_sphere.size() * sizeof(point4), sphereVAO, sphereVBO, vPosition, indices.data(), indices.size() * sizeof(GLuint)); // Added indices for sphere
     }
