@@ -330,7 +330,7 @@ void display(void) {
     glUseProgram(program);
     bouncingObject.update(deltaTime);
 
-    mat4 model_view = Translate(bouncingObject.position.x, bouncingObject.position.y, 0.1f) * 
+    mat4 model_view = Translate(bouncingObject.position.x, bouncingObject.position.y, 0.1f) *
         RotateY(Theta[Yaxis]) *
         RotateZ(Theta[Zaxis]);
 
@@ -487,10 +487,6 @@ void bindObject(GLuint vPosition) {
     }
     else if (currentObject == BUNNY) {
         bool loaded = loadOFF("bunny.off", vertices_bunny, indices_bunny);
-        std::cout << "Bunny loaded: " << loaded << ", "
-            << vertices_bunny.size() << " vertices, "
-            << indices_bunny.size() / 3 << " triangles\n";
-
         if (!loaded || vertices_bunny.empty()) return;
 
         // Center the bunny
@@ -567,7 +563,7 @@ int main()
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-
+   
 
         double currentTime = glfwGetTime();
         double deltaTime = currentTime - previousTime;
