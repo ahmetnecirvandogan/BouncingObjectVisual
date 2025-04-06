@@ -13,6 +13,9 @@
 GLuint program;
 GLuint texture; // Texture ID
 GLuint backgroundVAO, backgroundVBO; // VAO and VBO for background quad
+double frameRate = 120;
+double deltaTime = 1.0 / frameRate;
+vec3 initialVelocity;
 
 //For the Background
 void loadTexture(const char* filename) {
@@ -69,7 +72,6 @@ const int sceneHeight = 600;
 
 // About the object
 PhysicsObject bouncingObject;
-float xSpeed = 0.2;
 vec3 computeInitialPosition(float objectSize);
 
 //drawing mode
@@ -101,7 +103,7 @@ std::vector<point4> vertices_bunny;
 std::vector<GLuint> indices_bunny;
 float bunnyScale = 0.02f; // Initial scale for the bunny
 
-GLuint cubeVAO, cubeVBO, cubeIBO; // IBO for cube (if needed)
+GLuint cubeVAO, cubeVBO, cubeIBO; // IBO for cube
 GLuint sphereVAO, sphereVBO, sphereIBO; // IBO for sphere
 GLuint bunnyVAO, bunnyVBO, bunnyIBO; // VAO, VBO, IBO for bunny
 
@@ -252,9 +254,11 @@ void init()
     float objectSize = 0.5f;
     vec3 initPos = computeInitialPosition(objectSize);
     vec3 initVel(0.5f, 0.0f, 0.0f); // Set initial x-velocity here
+    initialVelocity = initVel; // Store the initial velocity
     vec3 initAcc(0.0f);
     float initMass = 1.0f;
     bouncingObject = PhysicsObject(initPos, initVel, initAcc, initMass);
+    bouncingObject.position = initPos;
 
     // Load shaders and use the resulting shader program
     program = InitShader("vshader.glsl", "fshader.glsl");
@@ -302,14 +306,16 @@ float rotationSpeed = 50.0f;
 
 void display(void) {
 
+    // 1. Ensure Depth Testing is Enabled at the Start of Each Frame
     glEnable(GL_DEPTH_TEST);
 
-    // Set the depth function to GL_LESS (default)
+    // 2. Set the Depth Function (Default is GL_LESS, but being explicit is good)
     glDepthFunc(GL_LESS);
 
+    // 3. Clear Both Color and Depth Buffers
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Render background
+    // 4. Render Background
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     GLuint backgroundProgram = InitShader("background_vshader.glsl", "background_fshader.glsl");
     glUseProgram(backgroundProgram);
@@ -319,21 +325,15 @@ void display(void) {
     glUniform1i(glGetUniformLocation(backgroundProgram, "texture1"), 0);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-    // Render Sphere/Cube
+    // 5. Render the Physics Object (Cube, Sphere, or Bunny)
     glPolygonMode(GL_FRONT_AND_BACK, drawingMode);
     glUseProgram(program);
-    double frameRate = 120;
-    double deltaTime = 1.0 / frameRate;
-    bouncingObject.velocity.x = xSpeed;
     bouncingObject.update(deltaTime);
 
-    mat4 model_view = Translate(bouncingObject.position) *
-        RotateX(Theta[Xaxis]) *
-        RotateY(Theta[Yaxis]) *
-        RotateZ(Theta[Zaxis]);
-
-    glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view);
-    glUniform4fv(colorLocation, 1, currentColor);
+    mat4 model_view = Translate(bouncingObject.position.x, bouncingObject.position.y, 0.01f) * // Try a small positive Z-offset
+                       RotateX(Theta[Xaxis]) *
+                       RotateY(Theta[Yaxis]) *
+                       RotateZ(Theta[Zaxis]);
 
     if (currentObject == CUBE) {
         float cubeScale = 1.0f;
@@ -351,7 +351,6 @@ void display(void) {
         glDrawElements(GL_TRIANGLES, indices_sphere.size(), GL_UNSIGNED_INT, 0);
     }
     else if (currentObject == BUNNY) {
-
         mat4 bunny_model_view = model_view * Scale(bunnyScale, bunnyScale, bunnyScale) * RotateZ(90) * RotateY(90);
         glUniformMatrix4fv(ModelView, 1, GL_TRUE, bunny_model_view);
         glBindVertexArray(bunnyVAO);
@@ -381,10 +380,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         else if (currentObject == BUNNY) {
             objectSize = bunnyScale;
         }
+        
+
         vec3 pos = computeInitialPosition(objectSize);
         bouncingObject.position = pos;
-        vec3 zerovec(0.0f);
-        bouncingObject.velocity = zerovec;
+        bouncingObject.velocity = initialVelocity; // Set velocity to the stored initial velocity
         break;
     }
 
@@ -433,64 +433,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
-//---------------------------------------------------------------------
-//
-// main
-//
-
-int main()
-{
-    if (!glfwInit())
-        exit(EXIT_FAILURE);
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
-
-    GLFWwindow* window = glfwCreateWindow(sceneWidth, sceneHeight, "Spin Cube", NULL, NULL);
-    glfwMakeContextCurrent(window);
-
-    if (!window)
-    {
-        glfwTerminate();
-        exit(EXIT_FAILURE);
-    }
-    glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "GLEW initialization failed" << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    glfwSetKeyCallback(window, key_callback);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
-    init();
-
-    double frameRate = 120.0;
-    double currentTime, previousTime = glfwGetTime();
-
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-
-        double currentTime = glfwGetTime();
-        double deltaTime = currentTime - previousTime;
-        previousTime = currentTime;
-
-        Theta[Axis] += rotationSpeed * deltaTime;
-        if (Theta[Axis] > 360.0f) Theta[Axis] -= 360.0f;
-        else if (Theta[Axis] < 0.0f) Theta[Axis] += 360.0f;
-
-        display();
-        glfwSwapBuffers(window);
-    }
-
-    glfwDestroyWindow(window);
-    glfwTerminate();
-    exit(EXIT_SUCCESS);
-}
 
 // Simulate the movement again
 vec3 computeInitialPosition(float objectSize)
@@ -583,4 +525,64 @@ void bindObject(GLuint vPosition) {
 
         glBindVertexArray(0);
     }
+}
+
+//---------------------------------------------------------------------
+//
+// main
+//
+
+int main()
+{
+    if (!glfwInit())
+        exit(EXIT_FAILURE);
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
+
+    GLFWwindow* window = glfwCreateWindow(sceneWidth, sceneHeight, "Spin Cube", NULL, NULL);
+    glfwMakeContextCurrent(window);
+
+    if (!window)
+    {
+        glfwTerminate();
+        exit(EXIT_FAILURE);
+    }
+    glewExperimental = GL_TRUE;
+    if (glewInit() != GLEW_OK) {
+        std::cerr << "GLEW initialization failed" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    glfwSetKeyCallback(window, key_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    init();
+
+    double frameRate = 120.0;
+    double currentTime, previousTime = glfwGetTime();
+
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+
+        
+        double currentTime = glfwGetTime();
+        double deltaTime = currentTime - previousTime;
+        previousTime = currentTime;
+
+        Theta[Axis] += rotationSpeed * deltaTime;
+        if (Theta[Axis] > 360.0f) Theta[Axis] -= 360.0f;
+        else if (Theta[Axis] < 0.0f) Theta[Axis] += 360.0f;
+
+        display();
+        glfwSwapBuffers(window);
+    }
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
+    exit(EXIT_SUCCESS);
 }
