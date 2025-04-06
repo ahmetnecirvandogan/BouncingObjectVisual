@@ -21,7 +21,7 @@ public:
 
     void bounce(vec3 surface_normal);
 
-    void applyResistence(float resistence);
+    void applyResistence(vec3 resistence);
 
 
 };

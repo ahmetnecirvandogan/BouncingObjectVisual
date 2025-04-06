@@ -6,96 +6,15 @@
 #include <vector>
 #include <fstream>
 
-// for background
+//For background
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-
 GLuint program;
-GLuint texture;
-GLuint backgroundVAO, backgroundVBO; 
+GLuint texture; // Texture ID
+GLuint backgroundVAO, backgroundVBO; // VAO and VBO for background quad
 
-// about the scene
-const int sceneWidth = 1200;
-const int sceneHeight = 600;
-
-// about the object
-PhysicsObject bouncingObject;
-float xSpeed = 0.5;
-vec3 computeInitialPosition(float cubeScale);
-
-//drawing mode
-GLenum drawingMode = GL_FILL;
-
-// object mode
-enum ObjectMode {
-    CUBE,
-    SPHERE,
-    BUNNY
-};
-
-ObjectMode currentObject = CUBE;
-
-// setup for cube
-typedef vec4  point4;
-const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
-point4 points_cube[NumVertices];
-// Scale the cube
-float cubeScale = 1.0f;
-
-// setup for sphere
-const int latitudeBands = 50; // we divide the sphere along the vertical axis
-const int longitudeBands = 50; // we divide the sphere along the horizontal axis
-float sphereScale = 0.48f; // Reduce this value to make the sphere smaller
-
-std::vector<point4> points_sphere;
-std::vector<GLuint> indices_sphere; // Add indices vector
-
-// setup for the bunny 
-std::vector<point4> vertices_bunny;
-std::vector<GLuint> indices_bunny;
-float bunnyScale = 0.05f;
-
-
-GLuint cubeVAO, cubeVBO, cubeIBO; 
-GLuint sphereVAO, sphereVBO, sphereIBO; 
-GLuint bunnyVAO, bunnyVBO, bunnyIBO;
-
-
-// Vertices of the cube
-point4 cube_vertices[8] = {
-    point4(-0.25, -0.25,  0.25, 1.0),
-    point4(-0.25,  0.25,  0.25, 1.0),
-    point4(0.25,  0.25,  0.25, 1.0),
-    point4(0.25, -0.25,  0.25, 1.0),
-    point4(-0.25, -0.25, -0.25, 1.0),
-    point4(-0.25,  0.25, -0.25, 1.0),
-    point4(0.25,  0.25, -0.25, 1.0),
-    point4(0.25, -0.25, -0.25, 1.0)
-};
-
-// Model-view and projection matrices uniform location
-GLuint  ModelView, Projection;
-
-
-// Color uniform location
-GLuint colorLocation;
-vec4 colorFirst(1.0, 0.0f, 0.0f, 1.0f);  // Red
-vec4 colorSecond(0.6f, 0.3f, 0.0f, 1.0f);  // Brown
-vec4 currentColor = colorFirst;
-bool isRed = true;
-
-GLuint vPosition;
-
-float backgroundVertices[] = {
-    // positions      // texture coords
-    -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
-    -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-     1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
-     1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-};
-
-// for the Background
+//For the Background
 void loadTexture(const char* filename) {
     int width, height, nrChannels;
     unsigned char* data = stbi_load(filename, &width, &height, &nrChannels, 0);
@@ -121,11 +40,14 @@ void loadTexture(const char* filename) {
         std::cerr << "Failed to load texture" << std::endl;
         stbi_image_free(data);
     }
-}
-
-
+}float backgroundVertices[] = {
+    // positions         // texture coords
+    -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+    -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+     1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+     1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+};
 void setupBackground() {
-
     glGenVertexArrays(1, &backgroundVAO);
     glGenBuffers(1, &backgroundVBO);
 
@@ -141,12 +63,77 @@ void setupBackground() {
     glEnableVertexAttribArray(1);
 }
 
+// About the scene
+const int sceneWidth = 1200;
+const int sceneHeight = 600;
+
+// About the object
+PhysicsObject bouncingObject;
+float xSpeed = 0.2;
+vec3 computeInitialPosition(float objectSize);
+
+//drawing mode
+GLenum drawingMode = GL_FILL;
+
+// object mode
+enum ObjectMode {
+    CUBE,
+    SPHERE,
+    BUNNY
+};
+
+ObjectMode currentObject = CUBE;
+
+// setup for cube
+typedef vec4  point4;
+const int NumVertices = 36; //(6 faces)(2 triangles/face)(3 vertices/triangle)
+point4 points_cube[NumVertices];
+
+// setup for sphere
+const int latitudeBands = 50; //Divides the sphere along the vertical axis
+const int longitudeBands = 50; //Divides the sphere along the horizontal axis
+
+std::vector<point4> points_sphere;
+std::vector<GLuint> indices_sphere; // Add indices vector
+
+// setup for the bunny
+std::vector<point4> vertices_bunny;
+std::vector<GLuint> indices_bunny;
+float bunnyScale = 0.02f; // Initial scale for the bunny
+
+GLuint cubeVAO, cubeVBO, cubeIBO; // IBO for cube (if needed)
+GLuint sphereVAO, sphereVBO, sphereIBO; // IBO for sphere
+GLuint bunnyVAO, bunnyVBO, bunnyIBO; // VAO, VBO, IBO for bunny
+
+// Vertices of the cube
+point4 cube_vertices[8] = {
+    point4(-0.25, -0.25,  0.25, 1.0),
+    point4(-0.25,  0.25,  0.25, 1.0),
+    point4(0.25,  0.25,  0.25, 1.0),
+    point4(0.25, -0.25,  0.25, 1.0),
+    point4(-0.25, -0.25, -0.25, 1.0),
+    point4(-0.25,  0.25, -0.25, 1.0),
+    point4(0.25,  0.25, -0.25, 1.0),
+    point4(0.25, -0.25, -0.25, 1.0)
+};
+
+// Model-view and projection matrices uniform location
+GLuint  ModelView, Projection;
+
+// Color uniform location
+GLuint colorLocation;
+vec4 colorFirst(1.0, 0.0f, 0.0f, 1.0f);  // Red
+vec4 colorSecond(0.6f, 0.3f, 0.0f, 1.0f);  // Brown
+vec4 currentColor = colorFirst;
+bool isRed = true;
+
+GLuint vPosition;
 
 // load the off file for the bunny
 bool loadOFF(const std::string& filename, std::vector<point4>& vertices, std::vector<GLuint>& indices) {
     std::ifstream file(filename);
     if (!file) {
-        std::cerr << "Can't open file\n";
+        std::cerr << "Can't open file: " << filename << std::endl;
         return false;
     }
 
@@ -166,7 +153,7 @@ bool loadOFF(const std::string& filename, std::vector<point4>& vertices, std::ve
     for (int i = 0; i < numVertices; ++i) {
         float x, y, z;
         file >> x >> y >> z;
-        vertices.emplace_back(x, y, z);
+        vertices.emplace_back(x, y, z, 1.0f);
     }
 
     for (int i = 0; i < numFaces; ++i) {
@@ -186,18 +173,12 @@ bool loadOFF(const std::string& filename, std::vector<point4>& vertices, std::ve
     return true;
 }
 
-
-
 void bindObject(GLuint vPosition);
 //----------------------------------------------------------------------------
 
 // generation of the cube
-
-// quad generates two triangles for each face and assigns colors to the vertices
 int Index = 0;
-
-void quad(int a, int b, int c, int d)
-{
+void quad(int a, int b, int c, int d) {
     if (Index + 6 > NumVertices) {
         std::cerr << "Error: Index out of bounds! Current Index: " << Index << std::endl;
         return;
@@ -208,14 +189,8 @@ void quad(int a, int b, int c, int d)
     points_cube[Index] = cube_vertices[a]; Index++;
     points_cube[Index] = cube_vertices[c]; Index++;
     points_cube[Index] = cube_vertices[d]; Index++;
-
-
 }
-
-// generate 12 triangles: 36 vertices and 36 colors
-
-void generateCube()
-{
+void generateCube() {
     Index = 0;
     quad(1, 0, 3, 2);
     quad(2, 3, 7, 6);
@@ -226,10 +201,8 @@ void generateCube()
 }
 
 // generation of the sphere
-
-
 void generateSphere(float radius) {
-    points_sphere.clear(); // Clear previous data
+    points_sphere.clear();
     indices_sphere.clear();
 
     for (int lat = 0; lat <= latitudeBands; lat++) {
@@ -250,7 +223,7 @@ void generateSphere(float radius) {
         }
     }
 
-    for (int lat = 0; lat < latitudeBands; lat++) { // Corrected loop
+    for (int lat = 0; lat < latitudeBands; lat++) {
         for (int lon = 0; lon < longitudeBands; lon++) {
             int first = lat * (longitudeBands + 1) + lon;
             int second = first + longitudeBands + 1;
@@ -258,7 +231,7 @@ void generateSphere(float radius) {
             indices_sphere.push_back(first);
             indices_sphere.push_back(second);
             indices_sphere.push_back(first + 1);
-             
+
             indices_sphere.push_back(second);
             indices_sphere.push_back(second + 1);
             indices_sphere.push_back(first + 1);
@@ -271,26 +244,22 @@ void generateSphere(float radius) {
 //
 
 void init()
-{   
-    glDisable(GL_CULL_FACE);
-
+{
     //Background initialization
     loadTexture("toy-story-background.jpg");
     setupBackground();
 
-
-   
-    vec3 initPos = computeInitialPosition(cubeScale);
-    bouncingObject.position = initPos;
+    float objectSize = 0.5f;
+    vec3 initPos = computeInitialPosition(objectSize);
+    vec3 initVel(0.5f, 0.0f, 0.0f); // Set initial x-velocity here
+    vec3 initAcc(0.0f);
+    float initMass = 1.0f;
+    bouncingObject = PhysicsObject(initPos, initVel, initAcc, initMass);
 
     // Load shaders and use the resulting shader program
     program = InitShader("vshader.glsl", "fshader.glsl");
     glUseProgram(program);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-    glEnable(GL_LINE_SMOOTH);
-    GLfloat line_width = 5.0f;
-    glLineWidth(line_width);
 
     // bind the object to the shader
     vPosition = glGetAttribLocation(program, "vPosition");
@@ -307,6 +276,7 @@ void init()
     // Set projection matrix
     mat4  projection;
 
+
     float aspect = (float)sceneWidth / (float)sceneHeight;
     float viewHeight = 2.0f;
     float viewWidth = viewHeight * aspect;
@@ -314,11 +284,8 @@ void init()
     float bottom = -top;
     float right = viewWidth / 2.0f;
     float left = -right;
-    projection = Ortho(left, right, bottom, top, -1.0, 1.0); // Ortho(): user-defined function in mat.h
-    glUniformMatrix4fv(Projection, 1, GL_TRUE, projection); // Send projection matrix to shader
-
-
-
+    projection = Ortho(left, right, bottom, top, -1.0, 1.0);
+    glUniformMatrix4fv(Projection, 1, GL_TRUE, projection);
 
     glEnable(GL_DEPTH_TEST);
     glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -328,15 +295,18 @@ void init()
 //
 // display
 //
-// Array of rotation angles (in degrees) for each coordinate axis
 enum { Xaxis = 0, Yaxis = 1, Zaxis = 2, NumAxes = 3 };
-int Axis = Yaxis; // Or your desired initial rotation axis
+int Axis = Yaxis;
 GLfloat Theta[NumAxes] = { 0.0, 0.0, 0.0 };
-float rotationSpeed = 50.0f; // Adjust rotation speed (degrees per second)
-
-
+float rotationSpeed = 50.0f;
 
 void display(void) {
+
+    glEnable(GL_DEPTH_TEST);
+
+    // Set the depth function to GL_LESS (default)
+    glDepthFunc(GL_LESS);
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Render background
@@ -357,54 +327,43 @@ void display(void) {
     bouncingObject.velocity.x = xSpeed;
     bouncingObject.update(deltaTime);
 
-    const vec3 displacement(0.0, 0.0, 0.0);
     mat4 model_view = Translate(bouncingObject.position) *
         RotateX(Theta[Xaxis]) *
         RotateY(Theta[Yaxis]) *
         RotateZ(Theta[Zaxis]);
 
-    glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view); // model_view matrix to shader
+    glUniformMatrix4fv(ModelView, 1, GL_TRUE, model_view);
     glUniform4fv(colorLocation, 1, currentColor);
 
     if (currentObject == CUBE) {
-        
+        float cubeScale = 1.0f;
         mat4 cube_model_view = model_view * Scale(cubeScale, cubeScale, cubeScale);
         glUniformMatrix4fv(ModelView, 1, GL_TRUE, cube_model_view);
         glBindVertexArray(cubeVAO);
         glDrawArrays(GL_TRIANGLES, 0, NumVertices);
     }
     else if (currentObject == SPHERE) {
-        
-        mat4 sphere_model_view = Translate(bouncingObject.position) *
-            RotateX(Theta[Xaxis]) *
-            RotateY(Theta[Yaxis]) *
-            RotateZ(Theta[Zaxis]) *
-            Scale(sphereScale, sphereScale, sphereScale);
+        float sphereScale = 0.48f;
+        mat4 sphere_model_view = model_view * Scale(sphereScale, sphereScale, sphereScale);
         glUniformMatrix4fv(ModelView, 1, GL_TRUE, sphere_model_view);
         glBindVertexArray(sphereVAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIBO);
         glDrawElements(GL_TRIANGLES, indices_sphere.size(), GL_UNSIGNED_INT, 0);
     }
-    else if (currentObject == BUNNY)
-    {
-        mat4 bunny_model_view = Translate(bouncingObject.position) *
-            Scale(bunnyScale, bunnyScale, bunnyScale); 
+    else if (currentObject == BUNNY) {
 
+        mat4 bunny_model_view = model_view * Scale(bunnyScale, bunnyScale, bunnyScale) * RotateZ(90) * RotateY(90);
         glUniformMatrix4fv(ModelView, 1, GL_TRUE, bunny_model_view);
         glBindVertexArray(bunnyVAO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bunnyIBO);
         glDrawElements(GL_TRIANGLES, indices_bunny.size(), GL_UNSIGNED_INT, 0);
     }
 
-
     glFinish();
 }
 
-
-
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    // not to be triggered in key release situation
     if (action != GLFW_PRESS) return;
     switch (key) {
     case GLFW_KEY_ESCAPE: case GLFW_KEY_Q:
@@ -413,20 +372,16 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     case GLFW_KEY_I:
     {
         float objectSize;
-        vec3 pos;  // Declare once
-
         if (currentObject == CUBE) {
-            objectSize = cubeScale;
+            objectSize = 1.0f;
         }
         else if (currentObject == SPHERE) {
-            objectSize = sphereScale;
+            objectSize = 0.48f;
         }
-        else {
-            objectSize = bunnyScale; 
+        else if (currentObject == BUNNY) {
+            objectSize = bunnyScale;
         }
-
-        pos = computeInitialPosition(objectSize);
-
+        vec3 pos = computeInitialPosition(objectSize);
         bouncingObject.position = pos;
         vec3 zerovec(0.0f);
         bouncingObject.velocity = zerovec;
@@ -434,31 +389,26 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 
     case GLFW_KEY_C:
-        // switch the color.
         isRed = !isRed;
         currentColor = isRed ? colorFirst : colorSecond;
-        glUseProgram(program); // just in case
+        glUseProgram(program);
         glUniform4fv(colorLocation, 1, currentColor);
         break;
     case GLFW_KEY_H:
-        // display the help commands
         std::cout << "i -- initialize the pose (top left corner of the window)\nc-- switch between two colors(of your choice), which is used to draw lines or triangles.\nh -- help; print explanation of your input control(simply to the command line)\nq -- quit(exit) the program" << std::endl;
         break;
-
     }
-
 }
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     if (action == GLFW_PRESS) {
         switch (button) {
-
         case GLFW_MOUSE_BUTTON_RIGHT:
         {
-            // switch object type
-            if (currentObject == CUBE)
+            if (currentObject == CUBE) {
                 currentObject = SPHERE;
+            }
             else if (currentObject == SPHERE)
                 currentObject = BUNNY;
             else
@@ -468,14 +418,11 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             glUseProgram(program);
             break;
         }
-
         case GLFW_MOUSE_BUTTON_LEFT:
         {
-            // switch drawing type
             drawingMode = (drawingMode == GL_LINE) ? GL_FILL : GL_LINE;
             glPolygonMode(GL_FRONT_AND_BACK, drawingMode);
-            //std::cout << "Drawing mode: " << (drawingMode == GL_LINE ? "Wireframe" : "Solid") << std::endl;
-
+            break;
         }
         }
     }
@@ -516,7 +463,6 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    //Specify which events to recognize and the callback functions to handle them
     glfwSetKeyCallback(window, key_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -529,11 +475,9 @@ int main()
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-
         double currentTime = glfwGetTime();
         double deltaTime = currentTime - previousTime;
         previousTime = currentTime;
-
 
         Theta[Axis] += rotationSpeed * deltaTime;
         if (Theta[Axis] > 360.0f) Theta[Axis] -= 360.0f;
@@ -546,16 +490,11 @@ int main()
     glfwDestroyWindow(window);
     glfwTerminate();
     exit(EXIT_SUCCESS);
-
-
 }
-
-
 
 // Simulate the movement again
 vec3 computeInitialPosition(float objectSize)
 {
-
     float aspect = (float)sceneWidth / (float)sceneHeight;
     float viewHeight = 2.0f;
     float viewWidth = viewHeight * aspect;
@@ -564,9 +503,7 @@ vec3 computeInitialPosition(float objectSize)
     float right = viewWidth / 2.0f;
     float left = -right;
 
-
     float halfObjectSize = objectSize / 2.0f;
-
 
     vec3 initialPosition = vec3(left + halfObjectSize, top - halfObjectSize, 0.0f);
     return initialPosition;
@@ -591,26 +528,23 @@ void createAndBindBuffer(const void* data, size_t dataSize, GLuint& vao, GLuint&
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesSize, indicesData, GL_STATIC_DRAW);
         if (vao == sphereVAO) sphereIBO = ibo;
         if (vao == cubeVAO) cubeIBO = ibo;
+        if (vao == bunnyVAO) bunnyIBO = ibo;
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-
 }
-
-
 
 void bindObject(GLuint vPosition) {
     if (currentObject == CUBE) {
         generateCube();
-        createAndBindBuffer(points_cube, sizeof(points_cube), cubeVAO, cubeVBO, vPosition); // No indices for cube in this case
+        createAndBindBuffer(points_cube, sizeof(points_cube), cubeVAO, cubeVBO, vPosition);
     }
     else if (currentObject == SPHERE) {
         generateSphere(0.5f);
-        createAndBindBuffer(points_sphere.data(), points_sphere.size() * sizeof(point4), sphereVAO, sphereVBO, vPosition, indices_sphere.data(), indices_sphere.size() * sizeof(GLuint)); // Added indices for sphere
+        createAndBindBuffer(points_sphere.data(), points_sphere.size() * sizeof(point4), sphereVAO, sphereVBO, vPosition, indices_sphere.data(), indices_sphere.size() * sizeof(GLuint));
     }
-    else if (currentObject == BUNNY)
-    {
+    else if (currentObject == BUNNY) {
         bool loaded = loadOFF("bunny.off", vertices_bunny, indices_bunny);
         std::cout << "Bunny loaded: " << loaded << ", "
             << vertices_bunny.size() << " vertices, "
@@ -618,21 +552,35 @@ void bindObject(GLuint vPosition) {
 
         if (!loaded || vertices_bunny.empty()) return;
 
-        // Ensure VAO, VBO, and IBO are created correctly for the bunny, and not re-declared inside the function
+        // Center the bunny
+        vec3 center(0.0f, 0.0f, 0.0f);
+        for (const auto& v : vertices_bunny) {
+            center.x += v.x;
+            center.y += v.y;
+            center.z += v.z;
+        }
+        if (!vertices_bunny.empty()) {
+            center /= vertices_bunny.size();
+            for (auto& v : vertices_bunny) {
+                v.x -= center.x;
+                v.y -= center.y;
+                v.z -= center.z;
+            }
+        }
+
         glGenVertexArrays(1, &bunnyVAO);
         glBindVertexArray(bunnyVAO);
 
         glGenBuffers(1, &bunnyVBO);
         glBindBuffer(GL_ARRAY_BUFFER, bunnyVBO);
         glBufferData(GL_ARRAY_BUFFER, vertices_bunny.size() * sizeof(point4), vertices_bunny.data(), GL_STATIC_DRAW);
-        glVertexAttribPointer(vPosition, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        glVertexAttribPointer(vPosition, 4, GL_FLOAT, GL_FALSE, sizeof(point4), (void*)0);
         glEnableVertexAttribArray(vPosition);
 
         glGenBuffers(1, &bunnyIBO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bunnyIBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_bunny.size() * sizeof(GLuint), indices_bunny.data(), GL_STATIC_DRAW);
 
-        // Unbind VAO (good practice)
         glBindVertexArray(0);
     }
 }
