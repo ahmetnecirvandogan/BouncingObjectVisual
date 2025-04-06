@@ -332,7 +332,13 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         break;
     case GLFW_KEY_I:
     {
-        float objectSize = 0.5f;
+        float objectSize;
+        if(currentObject == CUBE){
+            objectSize = 1.0f;
+        }
+        else if(currentObject == SPHERE){
+            objectSize = 0.48f;
+        }
         vec3 pos = computeInitialPosition(objectSize);
         bouncingObject.position = pos;
         vec3 zerovec(0.0f);
@@ -409,14 +415,11 @@ int main()
     GLFWwindow* window = glfwCreateWindow(sceneWidth, sceneHeight, "Spin Cube", NULL, NULL);
     glfwMakeContextCurrent(window);
     
-
     if (!window)
     {
         glfwTerminate();
         exit(EXIT_FAILURE);
     }
-
-
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
         std::cerr << "GLEW initialization failed" << std::endl;
@@ -436,10 +439,12 @@ int main()
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
+        
         double currentTime = glfwGetTime();
         double deltaTime = currentTime - previousTime;
         previousTime = currentTime;
 
+        
         Theta[Axis] += rotationSpeed * deltaTime;
         if (Theta[Axis] > 360.0f) Theta[Axis] -= 360.0f;
         else if (Theta[Axis] < 0.0f) Theta[Axis] += 360.0f;
