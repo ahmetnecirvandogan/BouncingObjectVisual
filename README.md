@@ -1,4 +1,4 @@
-# 🏀 Bouncing Object Simulation - COMP 410/510 Programming Assignment #1
+# 🐰 Bouncing Object Simulation - COMP 410/510 Programming Assignment #1
 
 **Witness the wonders of physics in motion! This OpenGL application simulates a bouncing ball (or cube) with user-controlled parameters and interactive elements.**
 
